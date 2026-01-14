@@ -4,5 +4,5 @@ window.PUCKLE_COMMON_WORDS = [
   "light","front","serve","touch","grind","clean","tight","shake","focus",
   "edges","curve","glide","blade","press","smash","snipe","track","pivot",
   "sweep","flush","brisk","flick","crazy","zones","house","feint","drill",
-  "parts","banks","walls","ranks"
+  "parts","walls","ranks"
 ].map(w => w.toLowerCase());
