@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0b0d12" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <title>PUCKLE - Daily Air Hockey Word Puzzle</title>
+
+  <style>
+    :root{
+      --bg:#0b0d12;
+      --panel:#121826;
+      --panel2:#0f1420;
+      --line:#263043;
+      --text:#e9eef7;
+      --muted:#9fb0c7;
+
+      --blue:#2f80ff;   /* Goal */
+      --yellow:#f2c94c; /* Bank */
+      --gray:#2a3244;   /* Miss */
+      --tile:#182036;
+
+      --good:#48ff8a;
+      --bad:#ff4d6d;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 50% 0%, #111a2b 0%, var(--bg) 55%, #070911 100%);
+      color:var(--text);
+      display:flex;
+      justify-content:center;
+      padding:16px;
+    }
+    .app{
+      width:min(720px, 100%);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background: linear-gradient(180deg, rgba(18,24,38,0.95), rgba(15,20,32,0.85));
+    }
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      line-height:1.1;
+    }
+    .title h1{
+      font-size:18px;
+      margin:0;
+      letter-spacing:0.6px;
+    }
+    .title .sub{
+      font-size:12px;
+      color:var(--muted);
+    }
+    .pillrow{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .pill{
+      font-size:12px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.18);
+      color:var(--muted);
+      user-select:none;
+    }
+    .pill b{ color:var(--text); }
+    button{
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.22);
+      color:var(--text);
+      border-radius:10px;
+      padding:10px 12px;
+      font-weight:700;
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+    button:active{ transform: translateY(1px); }
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:stretch;
+      flex-wrap:wrap;
+    }
+    .panel{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background: rgba(18,24,38,0.82);
+      padding:14px;
+    }
+    .panel h2{
+      margin:0 0 10px 0;
+      font-size:14px;
+      color:var(--muted);
+      letter-spacing:0.4px;
+    }
+    .gridwrap{
+      display:flex;
+      justify-content:center;
+    }
+    .grid{
+      display:grid;
+      grid-template-rows: repeat(6, 1fr);
+      gap:8px;
+      width:min(360px, 100%);
+    }
+    .grow{
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:8px;
+    }
+    .tile{
+      height:52px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background: var(--tile);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+      font-size:20px;
+      letter-spacing:1px;
+      user-select:none;
+      text-transform:uppercase;
+    }
+    .tile.goal{ background: color-mix(in oklab, var(--blue) 70%, #0b0d12); border-color: color-mix(in oklab, var(--blue) 65%, var(--line)); }
+    .tile.bank{ background: color-mix(in oklab, var(--yellow) 55%, #0b0d12); border-color: color-mix(in oklab, var(--yellow) 60%, var(--line)); }
+    .tile.miss{ background: var(--gray); border-color: color-mix(in oklab, var(--gray) 60%, var(--line)); }
+
+    .status{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:13px;
+      min-height:18px;
+    }
+    .status.good{ color:var(--good); }
+    .status.bad{ color:var(--bad); }
+
+    .kb{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      align-items:center;
+    }
+    .kbrow{ display:flex; gap:6px; flex-wrap:nowrap; justify-content:center; width:100%; }
+    .key{
+      min-width:32px;
+      height:44px;
+      padding:0 10px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.18);
+      color:var(--text);
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      user-select:none;
+    }
+    .key.wide{ min-width:64px; }
+    .key.goal{ background: color-mix(in oklab, var(--blue) 70%, #0b0d12); }
+    .key.bank{ background: color-mix(in oklab, var(--yellow) 55%, #0b0d12); color:#111; }
+    .key.miss{ background: var(--gray); color: #c4ccda; }
+    .legend{
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+      font-size:12px; color:var(--muted);
+    }
+    .dot{
+      width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:6px;
+    }
+
+    .footer{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .tiny{ font-size:12px; color:var(--muted); }
+
+    @media (max-width: 520px){
+      .tile{ height:48px; }
+      .key{ height:42px; min-width:30px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1>PUCKLE</h1>
+        <div class="sub">Daily air hockey word puzzle - 5 letters - 6 pucks</div>
+      </div>
+      <div class="pillrow">
+        <div class="pill">Pucks left: <b id="pucksLeft">6</b></div>
+        <div class="pill">Puzzle #: <b id="puzzleNum">-</b></div>
+        <button id="howBtn" type="button">How</button>
+        <button id="shareBtn" type="button">Share</button>
+      </div>
+    </header>
+
+    <div class="row">
+      <div class="panel" style="flex:1 1 420px;">
+        <h2>Goal Word</h2>
+        <div class="gridwrap">
+          <div class="grid" id="grid"></div>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="panel" style="flex:1 1 260px;">
+        <h2>Controls</h2>
+        <div class="legend">
+          <span><span class="dot" style="background:var(--blue)"></span>Goal (right spot)</span>
+          <span><span class="dot" style="background:var(--yellow)"></span>Bank (wrong spot)</span>
+          <span><span class="dot" style="background:var(--gray)"></span>Miss (not in word)</span>
+        </div>
+        <div style="height:10px;"></div>
+        <div class="kb" id="keyboard"></div>
+        <div style="height:12px;"></div>
+        <div class="footer">
+          <button id="shootBtn" type="button">Shoot</button>
+          <button id="clearBtn" type="button">Clear</button>
+          <button id="resetBtn" type="button">Reset Today</button>
+        </div>
+        <div class="tiny" style="margin-top:10px;">
+          Tip: Use a real keyboard or tap keys. Words must be valid.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="words-common.js"></script>
+  <script src="words-all.js"></script>
+  <script>
+    // ----------------------------
+    // PUCKLE - Daily Word Puzzle
+    // ----------------------------
+
+    const WORD_LEN = 5;
+    const MAX_TRIES = 6;
+
+    // Storage keys are versioned so you can safely change later
+    const STORAGE_PREFIX = "puckle_v1";
+    const todayKey = () => `${STORAGE_PREFIX}_state_${puzzleNumber()}`;
+
+    const $ = (id) => document.getElementById(id);
+
+    // Deterministic daily puzzle number based on local date
+    // Change the epoch to "season start" if you want
+    function puzzleNumber(){
+      const epoch = new Date(2026, 0, 1); // Jan 1, 2026 local
+      const now = new Date();
+      const d0 = new Date(epoch.getFullYear(), epoch.getMonth(), epoch.getDate());
+      const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const ms = d1 - d0;
+      return Math.floor(ms / 86400000);
+    }
+
+    // Simple deterministic PRNG for consistent daily word selection
+    function mulberry32(seed){
+      let t = seed >>> 0;
+      return function(){
+        t += 0x6D2B79F5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function pickDailyAnswer(){
+      const seed = 1337 + puzzleNumber();
+      const rand = mulberry32(seed);
+      const list = (window.PUCKLE_COMMON_WORDS || []).filter(w => w.length === WORD_LEN);
+      const idx = Math.floor(rand() * list.length);
+      return list[idx].toUpperCase();
+    }
+
+    function normalizeWord(w){
+      return (w || "").toUpperCase().replace(/[^A-Z]/g, "");
+    }
+
+    function isValidGuess(w){
+      const guess = normalizeWord(w);
+      if (guess.length !== WORD_LEN) return false;
+      // validate against full dictionary list
+      return (window.PUCKLE_ALL_WORDS_SET && window.PUCKLE_ALL_WORDS_SET.has(guess));
+    }
+
+    function scoreGuess(guess, answer){
+      // Returns array of states: "goal", "bank", "miss"
+      // Proper Wordle-style scoring with letter counts
+      const g = guess.split("");
+      const a = answer.split("");
+
+      const res = Array(WORD_LEN).fill("miss");
+      const counts = {};
+
+      // count letters in answer
+      for (let i=0;i<WORD_LEN;i++){
+        counts[a[i]] = (counts[a[i]] || 0) + 1;
+      }
+
+      // first pass: exact matches
+      for (let i=0;i<WORD_LEN;i++){
+        if (g[i] === a[i]){
+          res[i] = "goal";
+          counts[g[i]] -= 1;
+        }
+      }
+
+      // second pass: present but wrong position
+      for (let i=0;i<WORD_LEN;i++){
+        if (res[i] === "goal") continue;
+        const ch = g[i];
+        if (counts[ch] > 0){
+          res[i] = "bank";
+          counts[ch] -= 1;
+        }
+      }
+
+      return res;
+    }
+
+    // UI build
+    const gridEl = $("grid");
+    const statusEl = $("status");
+    const pucksLeftEl = $("pucksLeft");
+    const puzzleNumEl = $("puzzleNum");
+
+    function buildGrid(){
+      gridEl.innerHTML = "";
+      for (let r=0;r<MAX_TRIES;r++){
+        const row = document.createElement("div");
+        row.className = "grow";
+        row.dataset.row = r;
+        for (let c=0;c<WORD_LEN;c++){
+          const t = document.createElement("div");
+          t.className = "tile";
+          t.dataset.col = c;
+          t.textContent = "";
+          row.appendChild(t);
+        }
+        gridEl.appendChild(row);
+      }
+    }
+
+    const KB_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+    const keyboardEl = $("keyboard");
+    const keyState = {}; // letter -> "goal" | "bank" | "miss"
+
+    function buildKeyboard(){
+      keyboardEl.innerHTML = "";
+      KB_ROWS.forEach((rowStr, idx) => {
+        const row = document.createElement("div");
+        row.className = "kbrow";
+        if (idx === 2){
+          const enter = makeKey("ENTER", true);
+          enter.classList.add("wide");
+          row.appendChild(enter);
+        }
+        rowStr.split("").forEach(ch => row.appendChild(makeKey(ch)));
+        if (idx === 2){
+          const back = makeKey("BKSP", true);
+          back.classList.add("wide");
+          row.appendChild(back);
+        }
+        keyboardEl.appendChild(row);
+      });
+    }
+
+    function makeKey(label, isSpecial=false){
+      const k = document.createElement("div");
+      k.className = "key";
+      k.dataset.key = label;
+      k.textContent = label === "BKSP" ? "⌫" : (label === "ENTER" ? "Shoot" : label);
+      k.addEventListener("click", () => {
+        if (label === "ENTER") submitGuess();
+        else if (label === "BKSP") backspace();
+        else typeChar(label);
+      });
+      return k;
+    }
+
+    function setStatus(msg, kind=""){
+      statusEl.className = "status" + (kind ? " " + kind : "");
+      statusEl.textContent = msg || "";
+    }
+
+    function updatePucksLeft(){
+      pucksLeftEl.textContent = String(Math.max(0, MAX_TRIES - state.row));
+    }
+
+    function paintKeyboard(){
+      document.querySelectorAll(".key").forEach(k => {
+        const label = k.dataset.key;
+        if (!label || label === "ENTER" || label === "BKSP") return;
+        k.classList.remove("goal","bank","miss");
+        const st = keyState[label];
+        if (st) k.classList.add(st);
+      });
+    }
+
+    function upgradeKeyState(letter, st){
+      // goal beats bank beats miss
+      const order = { "miss": 1, "bank": 2, "goal": 3 };
+      const cur = keyState[letter];
+      if (!cur || order[st] > order[cur]) keyState[letter] = st;
+    }
+
+    // Game state
+    const answer = pickDailyAnswer();
+    puzzleNumEl.textContent = String(puzzleNumber());
+
+    let state = {
+      row: 0,
+      col: 0,
+      guesses: Array(MAX_TRIES).fill(""),
+      scores: Array(MAX_TRIES).fill(null),
+      done: false,
+      win: false
+    };
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(todayKey());
+        if (!raw) return;
+        const s = JSON.parse(raw);
+        if (!s || typeof s !== "object") return;
+        state = { ...state, ...s };
+
+        // rebuild keyboard state based on stored scores
+        Object.keys(keyState).forEach(k => delete keyState[k]);
+        for (let r=0;r<MAX_TRIES;r++){
+          const g = state.guesses[r];
+          const sc = state.scores[r];
+          if (!g || !sc) continue;
+          for (let i=0;i<WORD_LEN;i++){
+            upgradeKeyState(g[i], sc[i]);
+          }
+        }
+      }catch(e){}
+    }
+
+    function saveState(){
+      localStorage.setItem(todayKey(), JSON.stringify(state));
+    }
+
+    function draw(){
+      // grid
+      for (let r=0;r<MAX_TRIES;r++){
+        const rowEl = gridEl.children[r];
+        const g = (state.guesses[r] || "").padEnd(WORD_LEN, " ");
+        const sc = state.scores[r];
+
+        for (let c=0;c<WORD_LEN;c++){
+          const t = rowEl.children[c];
+          t.textContent = g[c] === " " ? "" : g[c];
+          t.classList.remove("goal","bank","miss");
+          if (sc){
+            t.classList.add(sc[c]);
+          }
+        }
+      }
+
+      updatePucksLeft();
+      paintKeyboard();
+
+      if (state.done){
+        if (state.win) setStatus("GOAL! You scored the word.", "good");
+        else setStatus(`Out of pucks. The word was ${answer}.`, "bad");
+      }
+    }
+
+    function typeChar(ch){
+      if (state.done) return;
+      if (state.col >= WORD_LEN) return;
+      const r = state.row;
+      const cur = state.guesses[r] || "";
+      const next = (cur + ch).slice(0, WORD_LEN);
+      state.guesses[r] = next;
+      state.col = next.length;
+      setStatus("");
+      saveState();
+      draw();
+    }
+
+    function backspace(){
+      if (state.done) return;
+      const r = state.row;
+      const cur = state.guesses[r] || "";
+      if (!cur.length) return;
+      state.guesses[r] = cur.slice(0, -1);
+      state.col = state.guesses[r].length;
+      setStatus("");
+      saveState();
+      draw();
+    }
+
+    function clearRow(){
+      if (state.done) return;
+      state.guesses[state.row] = "";
+      state.col = 0;
+      setStatus("");
+      saveState();
+      draw();
+    }
+
+    function submitGuess(){
+      if (state.done) return;
+
+      const r = state.row;
+      const guess = normalizeWord(state.guesses[r] || "");
+      if (guess.length !== WORD_LEN){
+        setStatus("Need 5 letters to shoot.", "bad");
+        return;
+      }
+      if (!isValidGuess(guess)){
+        setStatus("Not a valid word. Try another shot.", "bad");
+        return;
+      }
+
+      const sc = scoreGuess(guess, answer);
+      state.scores[r] = sc;
+
+      for (let i=0;i<WORD_LEN;i++){
+        upgradeKeyState(guess[i], sc[i]);
+      }
+
+      if (guess === answer){
+        state.done = true;
+        state.win = true;
+      } else if (r === MAX_TRIES - 1){
+        state.done = true;
+        state.win = false;
+      } else {
+        state.row += 1;
+        state.col = 0;
+      }
+
+      saveState();
+      draw();
+    }
+
+    function resetToday(){
+      localStorage.removeItem(todayKey());
+      Object.keys(keyState).forEach(k => delete keyState[k]);
+      state = {
+        row: 0, col: 0,
+        guesses: Array(MAX_TRIES).fill(""),
+        scores: Array(MAX_TRIES).fill(null),
+        done: false, win: false
+      };
+      setStatus("Reset for today. Fresh pucks.", "");
+      saveState();
+      draw();
+    }
+
+    // Keyboard events
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Enter"){ e.preventDefault(); submitGuess(); return; }
+      if (e.key === "Backspace"){ e.preventDefault(); backspace(); return; }
+      const k = e.key.toUpperCase();
+      if (/^[A-Z]$/.test(k)) typeChar(k);
+    });
+
+    // Buttons
+    $("shootBtn").addEventListener("click", submitGuess);
+    $("clearBtn").addEventListener("click", clearRow);
+    $("resetBtn").addEventListener("click", resetToday);
+
+    $("howBtn").addEventListener("click", () => {
+      alert(
+        "PUCKLE rules:\n\n" +
+        "You have 6 pucks to find the hidden 5-letter word.\n" +
+        "Blue = Goal (right letter, right spot)\n" +
+        "Yellow = Bank (right letter, wrong spot)\n" +
+        "Gray = Miss (not in word)\n\n" +
+        "Type a guess and press Shoot."
+      );
+    });
+
+    $("shareBtn").addEventListener("click", async () => {
+      const lines = [];
+      const num = puzzleNumber();
+      const tries = state.win ? (state.row + 1) : "X";
+      lines.push(`PUCKLE #${num} ${tries}/6`);
+      lines.push("");
+
+      // emoji grid
+      for (let r=0;r<MAX_TRIES;r++){
+        const sc = state.scores[r];
+        if (!sc) break;
+        const row = sc.map(s => s === "goal" ? "🟦" : (s === "bank" ? "🟨" : "⬛")).join("");
+        lines.push(row);
+      }
+
+      lines.push("");
+      lines.push(location.href);
+
+      const text = lines.join("\n");
+      try{
+        if (navigator.share){
+          await navigator.share({ text });
+          setStatus("Shared.", "good");
+        } else if (navigator.clipboard){
+          await navigator.clipboard.writeText(text);
+          setStatus("Copied to clipboard.", "good");
+        } else {
+          setStatus("Sharing not supported here.", "bad");
+        }
+      }catch(e){
+        setStatus("Share canceled.", "");
+      }
+    });
+
+    // Init
+    buildGrid();
+    buildKeyboard();
+    loadState();
+    saveState();
+    draw();
+
+    // PWA service worker
+    if ("serviceWorker" in navigator){
+      navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+    }
+  </script>
+</body>
+</html>
