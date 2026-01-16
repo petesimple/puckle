@@ -82,6 +82,7 @@
       background: rgba(0,0,0,0.18);
       color:var(--muted);
       user-select:none;
+      white-space:nowrap;
     }
     .pill b{ color:var(--text); }
     button{
@@ -155,13 +156,27 @@
     .status.good{ color:var(--good); }
     .status.bad{ color:var(--bad); }
 
+    /* Keyboard */
     .kb{
       display:flex;
       flex-direction:column;
       gap:8px;
       align-items:center;
+
+      /* FIX: fill width so rows can truly center */
+      width:100%;
     }
-    .kbrow{ display:flex; gap:6px; flex-wrap:nowrap; justify-content:center; width:100%; }
+    .kbrow{
+      display:flex;
+      gap:6px;
+      flex-wrap:nowrap;
+      justify-content:center;
+
+      /* FIX: stop drift and keep true centering */
+      width:100%;
+      margin:0 auto;
+      padding:0;
+    }
     .key{
       min-width:32px;
       height:44px;
@@ -175,6 +190,9 @@
       align-items:center;
       justify-content:center;
       user-select:none;
+
+      /* FIX: prevent flex shrink weirdness on small screens */
+      flex:0 0 auto;
     }
     .key.wide{ min-width:64px; }
     .key.goal{ background: color-mix(in oklab, var(--blue) 70%, #0b0d12); }
@@ -200,6 +218,7 @@
     @media (max-width: 520px){
       .tile{ height:48px; }
       .key{ height:42px; min-width:30px; }
+      .key.wide{ min-width:60px; }
     }
   </style>
 </head>
@@ -213,6 +232,8 @@
       <div class="pillrow">
         <div class="pill">Pucks left: <b id="pucksLeft">6</b></div>
         <div class="pill">Puzzle #: <b id="puzzleNum">-</b></div>
+        <div class="pill">Difficulty: <b id="diffPill">-</b></div>
+        <button id="statsBtn" type="button">Stats</button>
         <button id="howBtn" type="button">How</button>
         <button id="shareBtn" type="button">Share</button>
       </div>
@@ -254,19 +275,20 @@
   <script>
     // ----------------------------
     // PUCKLE - Daily Word Puzzle
+    // Beta 6.7.1: stats + streaks + easy/medium rotation + keyboard centering fix
+    // Uses: words-common.js (PUCKLE_COMMON_WORDS + optional answer pools)
+    //       words-all.js (PUCKLE_ALL_WORDS_SET)
     // ----------------------------
 
     const WORD_LEN = 5;
     const MAX_TRIES = 6;
 
-    // Storage keys are versioned so you can safely change later
     const STORAGE_PREFIX = "puckle_v1";
+    const STATS_KEY = "puckle_v1_stats";
     const todayKey = () => `${STORAGE_PREFIX}_state_${puzzleNumber()}`;
 
     const $ = (id) => document.getElementById(id);
 
-    // Deterministic daily puzzle number based on local date
-    // Change the epoch to "season start" if you want
     function puzzleNumber(){
       const epoch = new Date(2026, 0, 1); // Jan 1, 2026 local
       const now = new Date();
@@ -276,7 +298,6 @@
       return Math.floor(ms / 86400000);
     }
 
-    // Simple deterministic PRNG for consistent daily word selection
     function mulberry32(seed){
       let t = seed >>> 0;
       return function(){
@@ -287,12 +308,32 @@
       };
     }
 
+    function dailyDifficulty(){
+      return (puzzleNumber() % 2 === 0) ? "easy" : "medium";
+    }
+
     function pickDailyAnswer(){
       const seed = 1337 + puzzleNumber();
       const rand = mulberry32(seed);
-      const list = (window.PUCKLE_COMMON_WORDS || []).filter(w => w.length === WORD_LEN);
+      const diff = dailyDifficulty();
+
+      // Prefer curated answer pools if you add them to words-common.js
+      const pool =
+        (diff === "easy")
+          ? (window.PUCKLE_ANSWER_EASY || [])
+          : (window.PUCKLE_ANSWER_MED || []);
+
+      // Fallback: your PUCKLE_COMMON_WORDS list
+      const fallback = (window.PUCKLE_COMMON_WORDS || [])
+        .map(w => (w || "").toUpperCase())
+        .filter(w => w.length === WORD_LEN);
+
+      const list = (pool && pool.length)
+        ? pool.map(w => (w || "").toUpperCase()).filter(w => w.length === WORD_LEN)
+        : fallback;
+
       const idx = Math.floor(rand() * list.length);
-      return list[idx].toUpperCase();
+      return (list[idx] || "PUCKS").toUpperCase();
     }
 
     function normalizeWord(w){
@@ -302,25 +343,20 @@
     function isValidGuess(w){
       const guess = normalizeWord(w);
       if (guess.length !== WORD_LEN) return false;
-      // validate against full dictionary list
       return (window.PUCKLE_ALL_WORDS_SET && window.PUCKLE_ALL_WORDS_SET.has(guess));
     }
 
     function scoreGuess(guess, answer){
-      // Returns array of states: "goal", "bank", "miss"
-      // Proper Wordle-style scoring with letter counts
       const g = guess.split("");
       const a = answer.split("");
 
       const res = Array(WORD_LEN).fill("miss");
       const counts = {};
 
-      // count letters in answer
       for (let i=0;i<WORD_LEN;i++){
         counts[a[i]] = (counts[a[i]] || 0) + 1;
       }
 
-      // first pass: exact matches
       for (let i=0;i<WORD_LEN;i++){
         if (g[i] === a[i]){
           res[i] = "goal";
@@ -328,7 +364,6 @@
         }
       }
 
-      // second pass: present but wrong position
       for (let i=0;i<WORD_LEN;i++){
         if (res[i] === "goal") continue;
         const ch = g[i];
@@ -341,11 +376,76 @@
       return res;
     }
 
+    // Stats + streaks
+    function loadStats(){
+      try{
+        const raw = localStorage.getItem(STATS_KEY);
+        if (!raw) return { played:0, wins:0, curStreak:0, bestStreak:0, lastWinPuzzle:null, lastPlayedPuzzle:null };
+        const s = JSON.parse(raw);
+        return {
+          played: Number(s.played||0),
+          wins: Number(s.wins||0),
+          curStreak: Number(s.curStreak||0),
+          bestStreak: Number(s.bestStreak||0),
+          lastWinPuzzle: (s.lastWinPuzzle ?? null),
+          lastPlayedPuzzle: (s.lastPlayedPuzzle ?? null)
+        };
+      }catch(e){
+        return { played:0, wins:0, curStreak:0, bestStreak:0, lastWinPuzzle:null, lastPlayedPuzzle:null };
+      }
+    }
+
+    function saveStats(s){
+      localStorage.setItem(STATS_KEY, JSON.stringify(s));
+    }
+
+    function winPct(stats){
+      return stats.played ? Math.round((stats.wins / stats.played) * 100) : 0;
+    }
+
+    function recordCompletion(didWin){
+      const pn = puzzleNumber();
+      const stats = loadStats();
+
+      // Only count once per puzzle
+      if (stats.lastPlayedPuzzle === pn) return;
+
+      stats.played += 1;
+      stats.lastPlayedPuzzle = pn;
+
+      if (didWin){
+        stats.wins += 1;
+
+        // Streak continues only if you won yesterday
+        if (stats.lastWinPuzzle === pn - 1) stats.curStreak += 1;
+        else stats.curStreak = 1;
+
+        stats.lastWinPuzzle = pn;
+        if (stats.curStreak > stats.bestStreak) stats.bestStreak = stats.curStreak;
+      } else {
+        stats.curStreak = 0;
+      }
+
+      saveStats(stats);
+    }
+
+    function statsText(){
+      const s = loadStats();
+      return (
+        `PUCKLE Stats\n\n` +
+        `Played: ${s.played}\n` +
+        `Wins: ${s.wins} (${winPct(s)}%)\n` +
+        `Streak: ${s.curStreak}\n` +
+        `Best Streak: ${s.bestStreak}\n`
+      );
+    }
+
     // UI build
     const gridEl = $("grid");
     const statusEl = $("status");
     const pucksLeftEl = $("pucksLeft");
     const puzzleNumEl = $("puzzleNum");
+    const diffPillEl = $("diffPill");
 
     function buildGrid(){
       gridEl.innerHTML = "";
@@ -366,29 +466,33 @@
 
     const KB_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
     const keyboardEl = $("keyboard");
-    const keyState = {}; // letter -> "goal" | "bank" | "miss"
+    const keyState = {};
 
     function buildKeyboard(){
       keyboardEl.innerHTML = "";
       KB_ROWS.forEach((rowStr, idx) => {
         const row = document.createElement("div");
         row.className = "kbrow";
+
         if (idx === 2){
-          const enter = makeKey("ENTER", true);
+          const enter = makeKey("ENTER");
           enter.classList.add("wide");
           row.appendChild(enter);
         }
+
         rowStr.split("").forEach(ch => row.appendChild(makeKey(ch)));
+
         if (idx === 2){
-          const back = makeKey("BKSP", true);
+          const back = makeKey("BKSP");
           back.classList.add("wide");
           row.appendChild(back);
         }
+
         keyboardEl.appendChild(row);
       });
     }
 
-    function makeKey(label, isSpecial=false){
+    function makeKey(label){
       const k = document.createElement("div");
       k.className = "key";
       k.dataset.key = label;
@@ -421,7 +525,6 @@
     }
 
     function upgradeKeyState(letter, st){
-      // goal beats bank beats miss
       const order = { "miss": 1, "bank": 2, "goal": 3 };
       const cur = keyState[letter];
       if (!cur || order[st] > order[cur]) keyState[letter] = st;
@@ -430,6 +533,7 @@
     // Game state
     const answer = pickDailyAnswer();
     puzzleNumEl.textContent = String(puzzleNumber());
+    diffPillEl.textContent = dailyDifficulty().toUpperCase();
 
     let state = {
       row: 0,
@@ -448,7 +552,6 @@
         if (!s || typeof s !== "object") return;
         state = { ...state, ...s };
 
-        // rebuild keyboard state based on stored scores
         Object.keys(keyState).forEach(k => delete keyState[k]);
         for (let r=0;r<MAX_TRIES;r++){
           const g = state.guesses[r];
@@ -466,7 +569,6 @@
     }
 
     function draw(){
-      // grid
       for (let r=0;r<MAX_TRIES;r++){
         const rowEl = gridEl.children[r];
         const g = (state.guesses[r] || "").padEnd(WORD_LEN, " ");
@@ -476,9 +578,7 @@
           const t = rowEl.children[c];
           t.textContent = g[c] === " " ? "" : g[c];
           t.classList.remove("goal","bank","miss");
-          if (sc){
-            t.classList.add(sc[c]);
-          }
+          if (sc) t.classList.add(sc[c]);
         }
       }
 
@@ -530,12 +630,13 @@
 
       const r = state.row;
       const guess = normalizeWord(state.guesses[r] || "");
+
       if (guess.length !== WORD_LEN){
         setStatus("Need 5 letters to shoot.", "bad");
         return;
       }
       if (!isValidGuess(guess)){
-        setStatus("Not today's word. Try another shot.", "bad");
+        setStatus("Not a valid word. Try another shot.", "bad");
         return;
       }
 
@@ -556,6 +657,8 @@
         state.row += 1;
         state.col = 0;
       }
+
+      if (state.done) recordCompletion(state.win);
 
       saveState();
       draw();
@@ -588,6 +691,10 @@
     $("clearBtn").addEventListener("click", clearRow);
     $("resetBtn").addEventListener("click", resetToday);
 
+    $("statsBtn").addEventListener("click", () => {
+      alert(statsText());
+    });
+
     $("howBtn").addEventListener("click", () => {
       alert(
         "PUCKLE rules:\n\n" +
@@ -602,11 +709,12 @@
     $("shareBtn").addEventListener("click", async () => {
       const lines = [];
       const num = puzzleNumber();
-      const tries = state.win ? (state.row + 1) : "X";
-      lines.push(`PUCKLE #${num} ${tries}/6`);
+      const tries = state.win ? (state.row + 1) : (state.done ? "X" : "?");
+      const diff = dailyDifficulty().toUpperCase();
+
+      lines.push(`PUCKLE #${num} (${diff}) ${tries}/6`);
       lines.push("");
 
-      // emoji grid
       for (let r=0;r<MAX_TRIES;r++){
         const sc = state.scores[r];
         if (!sc) break;
@@ -614,7 +722,9 @@
         lines.push(row);
       }
 
+      const s = loadStats();
       lines.push("");
+      lines.push(`Streak: ${s.curStreak} (Best ${s.bestStreak})`);
       lines.push(location.href);
 
       const text = lines.join("\n");
