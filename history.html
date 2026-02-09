@@ -146,6 +146,67 @@
   </style>
 </head>
 <body>
+  <div id="lockScreen" style="
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: radial-gradient(1200px 800px at 50% 0%, #111a2b 0%, #0b0d12 55%, #070911 100%);
+  z-index:9999;
+">
+  <div style="
+    width:min(360px, 90%);
+    border:1px solid #263043;
+    border-radius:16px;
+    background: rgba(18,24,38,0.92);
+    padding:18px;
+    text-align:center;
+  ">
+    <h2 style="margin:0 0 6px 0; letter-spacing:0.6px;">PUCKLE History</h2>
+    <div style="font-size:13px; color:#9fb0c7; margin-bottom:12px;">
+      Enter passcode to view
+    </div>
+
+    <input
+      id="pwInput"
+      type="password"
+      inputmode="numeric"
+      placeholder="4 digit code"
+      style="
+        width:100%;
+        padding:12px;
+        font-size:18px;
+        text-align:center;
+        letter-spacing:4px;
+        border-radius:12px;
+        border:1px solid #263043;
+        background: rgba(0,0,0,0.25);
+        color:#e9eef7;
+      "
+    />
+
+    <button
+      id="pwBtn"
+      type="button"
+      style="
+        width:100%;
+        margin-top:12px;
+        padding:12px;
+        font-weight:900;
+        border-radius:12px;
+        border:1px solid #263043;
+        background: rgba(0,0,0,0.25);
+        color:#e9eef7;
+        cursor:pointer;
+      "
+    >
+      Enter
+    </button>
+
+    <div id="pwStatus" style="margin-top:10px; font-size:13px; color:#ff4d6d;"></div>
+  </div>
+</div>
   <div class="app">
     <header>
       <div>
@@ -221,6 +282,37 @@
     const WORD_LEN = 5;
     const $ = (id) => document.getElementById(id);
 
+
+    // ----------------------------
+// Simple password gate
+// ----------------------------
+const HISTORY_PASSWORD = "2580";
+
+function unlockHistory(){
+  document.getElementById("lockScreen").style.display = "none";
+  sessionStorage.setItem("puckle_history_ok", "1");
+}
+
+function checkPassword(){
+  const v = document.getElementById("pwInput").value.trim();
+  if (v === HISTORY_PASSWORD){
+    unlockHistory();
+  } else {
+    document.getElementById("pwStatus").textContent = "Nope.";
+  }
+}
+
+document.getElementById("pwBtn").addEventListener("click", checkPassword);
+document.getElementById("pwInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") checkPassword();
+});
+
+// auto unlock for this tab session
+if (sessionStorage.getItem("puckle_history_ok") === "1"){
+  unlockHistory();
+}
+
+    
     function setStatus(msg){
       $("status").textContent = msg || "";
     }
