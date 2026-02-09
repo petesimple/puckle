@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0d12" />
+  <title>PUCKLE Word History</title>
+  <style>
+    :root{
+      --bg:#0b0d12;
+      --panel:#121826;
+      --panel2:#0f1420;
+      --line:#263043;
+      --text:#e9eef7;
+      --muted:#9fb0c7;
+
+      --tile:#182036;
+      --good:#48ff8a;
+      --bad:#ff4d6d;
+      --blue:#2f80ff;
+      --yellow:#f2c94c;
+    }
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 50% 0%, #111a2b 0%, var(--bg) 55%, #070911 100%);
+      color:var(--text);
+      display:flex;
+      justify-content:center;
+      padding:16px;
+    }
+    .app{
+      width:min(860px, 100%);
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background: linear-gradient(180deg, rgba(18,24,38,0.95), rgba(15,20,32,0.85));
+      flex-wrap:wrap;
+    }
+    h1{
+      margin:0;
+      font-size:16px;
+      letter-spacing:0.6px;
+    }
+    .sub{ font-size:12px; color:var(--muted); margin-top:2px; }
+    .panel{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background: rgba(18,24,38,0.82);
+      padding:14px;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .pill{
+      font-size:12px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.18);
+      color:var(--muted);
+      user-select:none;
+      white-space:nowrap;
+    }
+    .pill b{ color:var(--text); }
+    button, input{
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.22);
+      color:var(--text);
+      border-radius:10px;
+      padding:10px 12px;
+      font-weight:700;
+      font-size:14px;
+    }
+    button{ cursor:pointer; }
+    button:active{ transform: translateY(1px); }
+    input[type="date"]{ padding:9px 10px; }
+    input[type="number"]{ width:120px; }
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      overflow:hidden;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.12);
+    }
+    th, td{
+      text-align:left;
+      padding:10px 10px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      font-size:13px;
+    }
+    th{
+      color:var(--muted);
+      font-weight:800;
+      letter-spacing:0.3px;
+      background: rgba(0,0,0,0.12);
+    }
+    tr:last-child td{ border-bottom:none; }
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      font-weight:800;
+      border-radius:999px;
+      padding:4px 8px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.18);
+      font-size:12px;
+    }
+    .dot{ width:10px; height:10px; border-radius:3px; display:inline-block; }
+    .dot.easy{ background: var(--blue); }
+    .dot.medium{ background: var(--yellow); }
+    .ans{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      letter-spacing:1px;
+      font-weight:900;
+      text-transform:uppercase;
+      background: var(--tile);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:6px 10px;
+      display:inline-block;
+    }
+    .status{
+      min-height:18px;
+      color:var(--muted);
+      font-size:13px;
+      margin-top:8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>PUCKLE Word History</h1>
+        <div class="sub">A quick lookup of the algorithm’s daily word by date. Not the “real” answer. Just your cheat sheet.</div>
+      </div>
+      <div class="row">
+        <a class="pill" href="./" style="text-decoration:none;">Back to PUCKLE</a>
+      </div>
+    </header>
+
+    <div class="panel">
+      <div class="row">
+        <div class="pill">Epoch: <b>Jan 1, 2026</b></div>
+        <div class="pill">Today puzzle #: <b id="todayPN">-</b></div>
+        <div class="pill">Today diff: <b id="todayDiff">-</b></div>
+      </div>
+
+      <div style="height:10px;"></div>
+
+      <div class="row">
+        <label class="pill" style="cursor:default;">Date</label>
+        <input id="datePick" type="date" />
+        <button id="goDate" type="button">Show date</button>
+
+        <span class="pill">or</span>
+
+        <label class="pill" style="cursor:default;">Puzzle #</label>
+        <input id="pnPick" type="number" min="0" step="1" placeholder="0" />
+        <button id="goPn" type="button">Show puzzle</button>
+
+        <span class="pill">or</span>
+
+        <button id="prevDay" type="button">Prev</button>
+        <button id="nextDay" type="button">Next</button>
+      </div>
+
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;">
+        <div class="pill">Range</div>
+        <div class="row">
+          <button id="last7" type="button">Last 7 days</button>
+          <button id="last30" type="button">Last 30 days</button>
+          <button id="next7" type="button">Next 7 days</button>
+          <button id="copyCsv" type="button">Copy CSV</button>
+        </div>
+      </div>
+
+      <div style="height:10px;"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:120px;">Date</th>
+            <th style="width:90px;">Puzzle #</th>
+            <th style="width:140px;">Difficulty</th>
+            <th>Word</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="words-common.js"></script>
+  <script src="words-10k.js"></script>
+  <script src="words-all.js"></script>
+
+  <script>
+    const WORD_LEN = 5;
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(msg){
+      $("status").textContent = msg || "";
+    }
+
+    function startOfDay(d){
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    function epochDay(){
+      return new Date(2026, 0, 1);
+    }
+
+    function puzzleNumberForDate(d){
+      const d0 = startOfDay(epochDay());
+      const d1 = startOfDay(d);
+      return Math.floor((d1 - d0) / 86400000);
+    }
+
+    function dateForPuzzleNumber(pn){
+      const d0 = startOfDay(epochDay());
+      const d = new Date(d0);
+      d.setDate(d.getDate() + pn);
+      return d;
+    }
+
+    function mulberry32(seed){
+      let t = seed >>> 0;
+      return function(){
+        t += 0x6D2B79F5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function dailyDifficulty(pn){
+      return (pn % 2 === 0) ? "easy" : "medium";
+    }
+
+    function pickDailyAnswer(pn){
+      const seed = 1337 + pn;
+      const rand = mulberry32(seed);
+      const diff = dailyDifficulty(pn);
+
+      const pool =
+        (diff === "easy")
+          ? (window.PUCKLE_ANSWER_EASY || [])
+          : (window.PUCKLE_ANSWER_MED || []);
+
+      const fallback = (window.PUCKLE_COMMON_WORDS || [])
+        .map(w => (w || "").toUpperCase())
+        .filter(w => w.length === WORD_LEN);
+
+      const list = (pool && pool.length)
+        ? pool.map(w => (w || "").toUpperCase()).filter(w => w.length === WORD_LEN)
+        : fallback;
+
+      const idx = Math.floor(rand() * list.length);
+      return (list[idx] || "PUCKS").toUpperCase();
+    }
+
+    function fmtDate(d){
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,"0");
+      const da = String(d.getDate()).padStart(2,"0");
+      return `${y}-${m}-${da}`;
+    }
+
+    function renderRows(pns){
+      const tb = $("tbody");
+      tb.innerHTML = "";
+      const rows = [];
+
+      pns.forEach(pn => {
+        const d = dateForPuzzleNumber(pn);
+        const diff = dailyDifficulty(pn);
+        const ans = pickDailyAnswer(pn);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${fmtDate(d)}</td>
+          <td>${pn}</td>
+          <td>
+            <span class="tag">
+              <span class="dot ${diff}"></span>
+              ${diff.toUpperCase()}
+            </span>
+          </td>
+          <td><span class="ans">${ans}</span></td>
+        `;
+        tb.appendChild(tr);
+
+        rows.push({ date: fmtDate(d), puzzle: pn, diff: diff.toUpperCase(), word: ans });
+      });
+
+      // stash for CSV copy
+      window.__PUCKLE_HISTORY_ROWS__ = rows;
+    }
+
+    function showAround(pn, mode){
+      const today = puzzleNumberForDate(new Date());
+
+      if (pn < 0) pn = 0;
+
+      // sync controls
+      $("pnPick").value = pn;
+      $("datePick").value = fmtDate(dateForPuzzleNumber(pn));
+
+      if (mode === "last7"){
+        renderRows([...Array(7)].map((_,i)=> pn - (6 - i)).filter(x=>x>=0));
+        setStatus("Showing last 7 days ending on selected date.");
+        return;
+      }
+      if (mode === "last30"){
+        renderRows([...Array(30)].map((_,i)=> pn - (29 - i)).filter(x=>x>=0));
+        setStatus("Showing last 30 days ending on selected date.");
+        return;
+      }
+      if (mode === "next7"){
+        renderRows([...Array(7)].map((_,i)=> pn + i));
+        setStatus("Showing next 7 days starting on selected date.");
+        return;
+      }
+
+      // default: single day view as a 7 day window
+      renderRows([...Array(7)].map((_,i)=> pn - 3 + i).filter(x=>x>=0));
+      setStatus("Centered 7 day window on selected date.");
+    }
+
+    function todayPn(){
+      return puzzleNumberForDate(new Date());
+    }
+
+    // buttons
+    $("goDate").addEventListener("click", () => {
+      const v = $("datePick").value;
+      if (!v){ setStatus("Pick a date."); return; }
+      const d = new Date(v + "T00:00:00");
+      const pn = puzzleNumberForDate(d);
+      showAround(pn);
+    });
+
+    $("goPn").addEventListener("click", () => {
+      const pn = Number(($("pnPick").value || "").trim());
+      if (!Number.isFinite(pn) || pn < 0){ setStatus("Enter a valid puzzle number."); return; }
+      showAround(Math.floor(pn));
+    });
+
+    $("prevDay").addEventListener("click", () => {
+      const pn = Number($("pnPick").value || todayPn());
+      showAround(Math.max(0, pn - 1));
+    });
+
+    $("nextDay").addEventListener("click", () => {
+      const pn = Number($("pnPick").value || todayPn());
+      showAround(pn + 1);
+    });
+
+    $("last7").addEventListener("click", () => {
+      const pn = Number($("pnPick").value || todayPn());
+      showAround(pn, "last7");
+    });
+
+    $("last30").addEventListener("click", () => {
+      const pn = Number($("pnPick").value || todayPn());
+      showAround(pn, "last30");
+    });
+
+    $("next7").addEventListener("click", () => {
+      const pn = Number($("pnPick").value || todayPn());
+      showAround(pn, "next7");
+    });
+
+    $("copyCsv").addEventListener("click", async () => {
+      const rows = window.__PUCKLE_HISTORY_ROWS__ || [];
+      if (!rows.length){ setStatus("Nothing to copy yet."); return; }
+
+      const header = "date,puzzle,difficulty,word";
+      const body = rows.map(r => `${r.date},${r.puzzle},${r.diff},${r.word}`).join("\n");
+      const csv = header + "\n" + body;
+
+      try{
+        await navigator.clipboard.writeText(csv);
+        setStatus("Copied CSV to clipboard.");
+      }catch(e){
+        setStatus("Copy failed here. Select and copy manually from the table.");
+      }
+    });
+
+    // init
+    (function init(){
+      const tpn = todayPn();
+      $("todayPN").textContent = String(tpn);
+      $("todayDiff").textContent = dailyDifficulty(tpn).toUpperCase();
+      $("datePick").value = fmtDate(new Date());
+      $("pnPick").value = tpn;
+      showAround(tpn, "last7");
+    })();
+  </script>
+</body>
+</html>
