@@ -321,6 +321,36 @@
   color:var(--muted);
   user-select:text;
 }
+    /* Dock wrapper */
+.controlsDock{
+  width:100%;
+}
+
+/* Reserve space when docked (set by JS) */
+:root{ --dockH: 0px; }
+
+/* On small screens, keep keyboard always visible */
+@media (max-width: 520px), (max-height: 760px){
+  body{
+    /* make room for dock so content doesn't hide behind it */
+    padding-bottom: calc(var(--dockH) + env(safe-area-inset-bottom));
+  }
+
+  .controlsDock{
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 0;
+    z-index: 9998;
+
+    width: min(720px, 100%);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(15,20,32,0.92), rgba(11,13,18,0.98));
+    backdrop-filter: blur(10px);
+  }
+}
   </style>
 </head>
 <body>
@@ -376,16 +406,19 @@
           <span><span class="dot" style="background:var(--gray)"></span>Miss (not in word)</span>
         </div>
         <div style="height:10px;"></div>
-        <div class="kb" id="keyboard"></div>
-        <div style="height:12px;"></div>
-        <div class="footer">
-          <button id="shootBtn" type="button">Shoot</button>
-          <button id="clearBtn" type="button">Clear</button>
-          <button id="resetBtn" type="button">Reset Today</button>
-        </div>
-        <div class="tiny" style="margin-top:10px;">
-          Tip: Use a real keyboard or tap keys. Words must be valid.
-        </div>
+        <div class="controlsDock" id="controlsDock">
+  <div class="kb" id="keyboard"></div>
+  <div style="height:10px;"></div>
+  <div class="footer">
+    <button id="shootBtn" type="button">Shoot</button>
+    <button id="clearBtn" type="button">Clear</button>
+    <button id="resetBtn" type="button">Reset Today</button>
+  </div>
+</div>
+
+<div class="tiny" style="margin-top:10px;">
+  Tip: Use a real keyboard or tap keys. Words must be valid.
+</div>
       </div>
     </div>
   </div>
@@ -939,6 +972,26 @@ console.log("ALL WORDS SET:", window.PUCKLE_ALL_WORDS_SET?.size);
     if ("serviceWorker" in navigator){
       navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
     }
+
+    function syncDockHeight(){
+  const dock = document.getElementById("controlsDock");
+  if (!dock) return;
+
+  const mq = window.matchMedia("(max-width: 520px), (max-height: 760px)");
+  if (!mq.matches){
+    document.documentElement.style.setProperty("--dockH", "0px");
+    return;
+  }
+
+  // Measure and reserve space so content never hides behind the dock
+  const h = Math.ceil(dock.getBoundingClientRect().height);
+  document.documentElement.style.setProperty("--dockH", h + "px");
+}
+
+// Run on load + resize + orientation changes
+syncDockHeight();
+window.addEventListener("resize", syncDockHeight);
+window.addEventListener("orientationchange", syncDockHeight);
   </script>
 </body>
 </html>
